@@ -1,8 +1,8 @@
 
-bootblockother.o:     formato del fichero elf32-i386
+bootblockother.o:     file format elf32-i386
 
 
-Desensamblado de la sección .text:
+Disassembly of section .text:
 
 00007000 <start>:
 # This code combines elements of bootasm.S and entry.S.

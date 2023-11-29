@@ -117,3 +117,27 @@ sys_date(void)
   cmostime(r);
   return 0;
 }
+
+int 
+sys_getprio(void)
+{
+  int n;
+
+  if(argint(0, &n) < 0)
+    return -1;
+
+  return getprio(n);
+}
+
+int 
+sys_setprio(void)
+{
+  int n, m;
+  if(argint(0, &n) < 0)
+    return -1;
+
+  if(argint(1, &m) < 0)
+    return -1;
+
+  return setprio(n, m);
+}

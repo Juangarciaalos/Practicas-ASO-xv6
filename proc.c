@@ -71,15 +71,15 @@ myproc(void) {
 void
 remove_beggining(int level) 
 {
-  struct proc *first, *last;
-  first = ptable.priority_list[level].first_proc;
-  last = ptable.priority_list[level].last_proc;
+  // struct proc *first, *last;
+  // first = ptable.priority_list[level].first_proc;
+  // last = ptable.priority_list[level].last_proc;
 
-  if (first->pid == last->pid) { // There was only one process in queue, now is empty
-    first = NULL;
-    last  = NULL;
+  if (ptable.priority_list[level].first_proc->pid == ptable.priority_list[level].last_proc->pid) { // There was only one process in queue, now is empty
+    ptable.priority_list[level].first_proc = NULL;
+    ptable.priority_list[level].last_proc  = NULL;
   } else {
-    first = first->next_proc;
+    ptable.priority_list[level].first_proc = ptable.priority_list[level].first_proc->next_proc;
   }
 }
 
@@ -88,20 +88,51 @@ void
 insert_end(struct proc *p) 
 {
   int level = p->prio_level;
-  struct proc *first, *last;
-  first = ptable.priority_list[level].first_proc;
-  last = ptable.priority_list[level].last_proc;
+  //struct proc *first; //*last;
+  //first = ptable.priority_list[level].first_proc;
+  //last = ptable.priority_list[level].last_proc;
 
-  if (first == NULL) { //Queue is empty
-    last = p;
-    first = p;
-  } else {
-    last->next_proc = p;
+  if (ptable.priority_list[level].first_proc == NULL) { //Queue is empty
+    ptable.priority_list[level].first_proc = p;
+    ptable.priority_list[level].last_proc = p;
     p->next_proc = NULL;
-    last = p;
+  } else {
+    ptable.priority_list[level].last_proc->next_proc = p;
+    p->next_proc = NULL;
+    ptable.priority_list[level].last_proc = p;
   }
 }
 
+int 
+getprio(int pid) 
+{
+  struct proc *p;
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == pid)
+      return p->prio_level;
+  }
+
+  return -1;
+}
+
+int 
+setprio(int pid, unsigned int proc_prio)
+{
+  struct proc *p;
+
+  if (proc_prio < 0 || proc_prio > 9)
+    return -1;
+
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == pid){
+      p->prio_level = proc_prio;
+      return p->prio_level;
+    }
+  }
+
+  return -1;
+
+}
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -186,9 +217,11 @@ userinit(void)
   // writes to be visible, and the lock is also needed
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
-
   p->state = RUNNABLE;
   insert_end(p);
+  if (ptable.priority_list[5].first_proc != NULL)
+    cprintf("out of memory?\n");
+
 
   release(&ptable.lock);
 }
@@ -398,7 +431,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  int level = 0;
+  int level;
 
   for(;;){
     // Enable interrupts on this processor.
@@ -412,8 +445,8 @@ scheduler(void)
       
       c->proc = p;
       switchuvm(p);
-      p->state = RUNNING;
       remove_beggining(level);
+      p->state = RUNNING;
 
       swtch(&(c->scheduler), p->context); //Esta funcion continúa por el mismo sitio pero en otro proceso, es decir entras por una pila, pero restauras otra
       switchkvm();
@@ -421,7 +454,7 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
 
-      level = 0;
+      break;
     }
     release(&ptable.lock);
 

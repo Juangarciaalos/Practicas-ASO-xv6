@@ -99,10 +99,6 @@ trap(struct trapframe *tf)
       myproc()->killed = 1;
     }
     break;
-  case T_STACK:
-    cprintf("stack overflow\n");
-    myproc()->killed = 1;
-    break;
 
   //PAGEBREAK: 13
   default:

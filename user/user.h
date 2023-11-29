@@ -30,6 +30,8 @@ extern char* sbrk(int);
 extern int sleep(int);
 extern int uptime(void);
 extern int date(struct rtcdate*);
+extern int getprio(int);
+extern int setprio(int, unsigned int);
 
 // ulib.c
 extern int stat(const char*, struct stat*);

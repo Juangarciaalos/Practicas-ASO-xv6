@@ -31,4 +31,6 @@ SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
 SYSCALL(date)
+SYSCALL(getprio)
+SYSCALL(setprio)
 
