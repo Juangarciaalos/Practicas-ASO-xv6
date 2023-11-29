@@ -67,6 +67,41 @@ myproc(void) {
   return p;
 }
 
+// Remove the first process from a prio queue
+void
+remove_beggining(int level) 
+{
+  struct proc *first, *last;
+  first = ptable.priority_list[level].first_proc;
+  last = ptable.priority_list[level].last_proc;
+
+  if (first->pid == last->pid) { // There was only one process in queue, now is empty
+    first = NULL;
+    last  = NULL;
+  } else {
+    first = first->next_proc;
+  }
+}
+
+// Insert a process in a priority level at the end
+void 
+insert_end(struct proc *p) 
+{
+  int level = p->prio_level;
+  struct proc *first, *last;
+  first = ptable.priority_list[level].first_proc;
+  last = ptable.priority_list[level].last_proc;
+
+  if (first == NULL) { //Queue is empty
+    last = p;
+    first = p;
+  } else {
+    last->next_proc = p;
+    p->next_proc = NULL;
+    last = p;
+  }
+}
+
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -91,7 +126,7 @@ allocproc(void)
 found:
   p->state = EMBRYO; //Pone el estado del nuevo proceso en embrion
   p->pid = nextpid++; //nextpid almacena el último PID usado
-  insert_end(p, 5); //Pone el proceso el final de la cola de prioridad 5
+  p->prio_level = 5; // Asigna prioridad 5 al nuevo proceso
 
   release(&ptable.lock);
 
@@ -153,7 +188,7 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
-  insert_end(p, 5);
+  insert_end(p);
 
   release(&ptable.lock);
 }
@@ -199,7 +234,6 @@ fork(void)
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
-    insert_end(np, curproc->prio_level);
     return -1;
   }
   np->sz = curproc->sz;
@@ -221,6 +255,9 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  np->prio_level = curproc->prio_level;
+  insert_end(np);
+
 
   release(&ptable.lock);
 
@@ -326,7 +363,8 @@ wait(int *exit_status)
 
 // Search process priority level based on his pid 
 int 
-proc_prio(int pid){
+proc_prio(int pid)
+{
   int q;
   struct proc *p;
   for (q = 0; q < PRIO_LEVELS; q++){
@@ -343,20 +381,8 @@ proc_prio(int pid){
   return -1;
 }
 
-// Insert a process in a priority level at the beggining
-void 
-insert_begin(struct proc *p, int level) {
-  p->next_proc = ptable.priority_list[level].first_proc;
-  ptable.priority_list[level].first_proc = p;
-}
 
-// Insert a process in a priority level at the end
-void 
-insert_end(struct proc *p, int level) {
-  ptable.priority_list[level].last_proc->next_proc = p;
-  p->next_proc = NULL;
-  ptable.priority_list[level].last_proc = p;
-}
+
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
@@ -381,21 +407,16 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for (level = 0; level < PRIO_LEVELS; level++){
-      p = ptable.priority_list[level].first_proc;
-
-      while (p->next_proc != NULL && p->state != RUNNABLE)
-        p = p->next_proc;
-
-      if (p->state != RUNNABLE)
+      if ((p = ptable.priority_list[level].first_proc) == NULL)
         continue;
       
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      remove_beggining(level);
 
       swtch(&(c->scheduler), p->context); //Esta funcion continúa por el mismo sitio pero en otro proceso, es decir entras por una pila, pero restauras otra
       switchkvm();
-
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
@@ -439,6 +460,7 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
+  insert_end(myproc());
   sched();
   release(&ptable.lock);
 }
@@ -512,8 +534,10 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+      insert_end(p);
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -538,8 +562,10 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
+      if(p->state == SLEEPING){
         p->state = RUNNABLE;
+        insert_end(p);
+      }
       release(&ptable.lock);
       return 0;
     }
