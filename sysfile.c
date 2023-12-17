@@ -75,17 +75,21 @@ sys_dup2(void)
   if(argfd(0, &oldfd, &f) < 0)
     return -1;
 
-  if (argint(0, &newfd) < 0)
+  if (argint(1, &newfd) < 0)
     return -1;
+
+  if (newfd < 0 || newfd >= NOFILE)
+         return -1;
 
   if (oldfd == newfd) {
     return newfd;
   }
-  if ((newf = myproc()->ofile[newfd]))
-    fileclose(newf);
+  
+  if (argfd(1, 0, &newf) == 0)
+          fileclose(newf);
 
-  myproc()->ofile[newfd] = f;
   filedup(f);
+  myproc()->ofile[newfd] = myproc()->ofile[oldfd]; 
   return newfd;
 }
 

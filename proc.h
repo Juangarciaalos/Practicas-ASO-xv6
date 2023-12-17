@@ -52,6 +52,7 @@ struct proc {
   int exit_status;             // Status of process when exiting
   unsigned int prio_level;     // Priority level of the process
   struct proc *next_proc;      // Next process in the prio level
+  int pagina_guarda;            // Guarda la dirección de la página de guarda
 };
 
 //Single level of priority in the priority queue

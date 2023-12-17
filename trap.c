@@ -80,25 +80,48 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
-  case T_PGFLT:
+  case T_PGFLT: 
+    {
     if(myproc() == 0){
       cprintf("unexpected trap %d from cpu %d eip %x (cr2=0x%x)\n",
                tf->trapno, cpuid(), tf->eip, rcr2());
       panic("trap");
     }
-    char *mem;
-    mem = kalloc();
-    if (mem == 0) {
-      cprintf("page fault out of memory\n");
-      myproc()->killed = 1;
-    }
-    memset(mem, 0, PGSIZE);
-    if (mappages(myproc()->pgdir, (char*)PGROUNDDOWN(rcr2()), PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-      cprintf("page mapping failed\n");
-      kfree(mem);
-      myproc()->killed = 1;
+
+    //Comprueba que el error se haya producido por una violacion de página
+    if ((tf->err & 1) == 0x01) {
+      uint direccion = PGROUNDDOWN(rcr2());
+      if (myproc()->pagina_guarda <= direccion) { 
+        cprintf("page fault, page-protection violation\n");
+        myproc()->killed = 1;
+        break;
+      }
+      break;
+    } else {
+      if (rcr2() >= myproc()->sz){
+        cprintf("intento de acceso mas alla de sz\n");
+        myproc()->killed = 1;
+	      break;
+      }
+
+      char *mem;
+      mem = kalloc();
+      if (mem == 0) {
+        cprintf("page fault out of memory\n");
+        myproc()->killed = 1;
+        break;
+      }
+      memset(mem, 0, PGSIZE);
+      if (mappages(myproc()->pgdir, (char*)PGROUNDDOWN(rcr2()), PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+        cprintf("page mapping failed\n");
+        kfree(mem);
+        myproc()->killed = 1;
+        break;
+      }
     }
     break;
+    }
+  
 
   //PAGEBREAK: 13
   default:

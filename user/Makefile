@@ -16,6 +16,13 @@ UPROGS=\
 	wc\
 	zombie\
 	tprio\
+	tsbrk1\
+	tsbrk2\
+	tsbrk3\
+	tsbrk4\
+	tsbrk5\
+	dup2test\
+	exitwait\
 
 # Try to infer the correct TOOLPREFIX if not set
 ifndef TOOLPREFIX

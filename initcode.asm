@@ -1,8 +1,8 @@
 
-initcode.o:     file format elf32-i386
+initcode.o:     formato del fichero elf32-i386
 
 
-Disassembly of section .text:
+Desensamblado de la sección .text:
 
 00000000 <start>:
 
